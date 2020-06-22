@@ -1,2 +1,0 @@
-30.04.2019 -    Filtered out 'Dev' and 'Lost' status
-                Fixed exception when the actual file saved with %4d in the name
