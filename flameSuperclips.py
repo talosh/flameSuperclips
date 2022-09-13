@@ -1422,11 +1422,12 @@ def ensure_superclips_in_bookmarks():
     global SUPERCLIPS_FOLDER
     bookmark_file = '/opt/Autodesk/shared/bookmarks/cf_bookmarks.xml'
     if os.path.isfile(bookmark_file):
-        with open(bookmark_file, 'r') as xml_file:
+        print ('reading %s' % bookmark_file)
+        with open(bookmark_file, 'rb') as xml_file:
             xml_string = xml_file.read()
             xml_file.close()
-    if not xml_string:
-        return False
+    
+    xml_string = xml_string.decode()
     minify_step1 = xml_string.split('\n')
     minify_step2 = []
     for x in minify_step1:
@@ -1452,7 +1453,8 @@ def ensure_superclips_in_bookmarks():
             superclips_bookmark.setAttribute('Name', 'flameSuperclips')
             superclips_bookmark.setAttribute('Path', SUPERCLIPS_FOLDER)
             section.appendChild(superclips_bookmark)
-    with open(bookmark_file, 'w') as xml_file:
+
+    with open(bookmark_file, 'wb') as xml_file:
         try:
             xml_file.write(bookmarks.toprettyxml(encoding='utf-8'))
             xml_file.close()
