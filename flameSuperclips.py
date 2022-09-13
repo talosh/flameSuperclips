@@ -3,10 +3,12 @@
 #   ================
 
 SUPERCLIPS_FOLDER = '/var/tmp/flameSuperclips'
-SERVER_URL = 'http://dl.shotgrid.autodesk.com'
+SERVER_URL = 'https://dl.shotgrid.autodesk.com'
 SHORT_LOOP = 2      # Hours
 LONG_LOOP = 9       # Days
 RETRO_LOOP = 299    # Days
+
+STORAGE_ROOT_PATH = '/mnt/dl-tests/lucid/vfx'
 
 DEBUG = False
 
@@ -86,22 +88,22 @@ class shotgunScanner(object):
     global SERVER_URL
     global SHORT_LOOP
     global LONG_LOOP
+    global STORAGE_ROOT_PATH
 
     def __init__(self):
         self.log = logger()
         self.log.info('scanner is waking up')
         # In case of using API script add your your script credentils here
         # {login: 'script_name', password: 'api_key'}
-        self.script_login_details = {
+        self.login_details = {
             'login': 'superclips',
             'password': 'REMOVED'
         }
-        self.storage_root = '/jobs'
+        self.storage_root = STORAGE_ROOT_PATH
 
         self.shotgun_steps_list = {}
         self.active_projects = {}
         self.update_sg_steps()
-        sys.exit()
         self.update_active_projects()
         self.sequences = self.get_sequences()
 
@@ -117,7 +119,7 @@ class shotgunScanner(object):
             loop.start()
 
         self.verified_pb_files = set()
-    
+
     def terminate_loops(self):
         self.threads = False
         for loop in self.loops:
@@ -231,7 +233,6 @@ class shotgunScanner(object):
 
             self.loop_timeout(timeout, start)
 
-
     def process_publishes(self, pb_files, loop):
         self.log.debug('process_publishes: starting with %s published files for %s loop' % (
             len(pb_files),
@@ -272,9 +273,11 @@ class shotgunScanner(object):
                 if entity_pb_file_id:
                     self.verified_pb_files.add(entity_pb_file_id)
 
+
             entity_pb_files = self.filter_publishes(found_entity_publishes)
             if not entity_pb_files:
                 continue
+
             sorted_entity_pb_files = list()
             sorted_entity_pb_files = self.sort_published_files(entity_pb_files)
             if not sorted_entity_pb_files:
@@ -374,10 +377,13 @@ class shotgunScanner(object):
                 api_key = self.login_details['password'],
                 host = SERVER_URL
             )
-        except:
+        except Exception as e:
+            pprint (e)
             return None
+
         sg = user.create_sg_connection()
         steps = sg.find('Step', [], ['short_name'])
+
         for step in steps:
             id = step.get('id')
             short_name = step.get('short_name')
@@ -429,7 +435,8 @@ class shotgunScanner(object):
             'Image Sequence',
             'Playblast',
             'Rendered Image',
-            'Movie'
+            'Movie',
+            'Flame Render'
         ]
 
         allowed_extensions = [
@@ -447,6 +454,20 @@ class shotgunScanner(object):
             'mm',
             'roto'
         ]
+
+        '''
+        pb_file_types_zoo = set()
+        for pb_file in pb_files:
+            pb_file_type = pb_file.get('published_file_type', None)
+            if pb_file_type:
+                pb_file_type_name = pb_file_type.get('name', None)
+            else:
+                continue
+            pb_file_types_zoo.add(pb_file_type_name)
+
+        print ('pb_file_types zoo:')
+        pprint (pb_file_types_zoo)
+        '''
 
         filtered_pb_files = list()
 
@@ -497,6 +518,7 @@ class shotgunScanner(object):
             if not path_cache:
                 continue
             root, ext = os.path.splitext(os.path.basename(path_cache))
+
             if ext[1:].lower() not in allowed_extensions:
                 continue
             
@@ -529,7 +551,7 @@ class shotgunScanner(object):
         # debug
         # pfs = pfs[:len(pfs) - 1]
         #
-            
+        
         return pfs
 
     def get_step_sorting_order(self, published_file_group):
@@ -606,7 +628,7 @@ class shotgunScanner(object):
             
             if not file_names:
                 continue
-            
+                    
             # ignore if marker is there
             if '.openclip.ignore' in file_names:
                 continue
@@ -618,8 +640,10 @@ class shotgunScanner(object):
 
             published_image_sequence.update({'flame_friendly_path': flame_friendly_path})
 
+
             # try to read exr header
             published_image_sequence['parsed_header'] = self.parse_header_data({})
+
             match = re.search('\[(.*)-(.*)\]', flame_friendly_path)
             if match:
                 path = flame_friendly_path.replace('[' + match.group(1) + '-' + match.group(2) + ']', match.group(1))
@@ -1186,7 +1210,6 @@ class shotgunScanner(object):
             return None
 
     def read_exr_header(self, path):
-
         exr = None
         try:
             exr = open(path, 'rb')
@@ -1195,30 +1218,32 @@ class shotgunScanner(object):
             return None
 
         MAGIC = 0x01312f76
+
         COMPRESSION = ['NO','RLE','ZIPS','ZIP','PIZ','PXR24','B44','B44A', 'DWAA', 'DWAB']
         LINEORDER = ['INCRESING Y','DECREASING Y','RANDOM Y']
         PIXELTYPE = ['UINT','HALF','FLOAT']
 
+        header = {}
+
         try:
-            header = {}
             id = unpack('I', exr.read(4))[0]
             ver = unpack('I', exr.read(4))[0]
             if id != MAGIC:
                 return False
 
             str = []
-            d = exr.read(1)
-            while d != '\0':
+            d = exr.read(1).decode()
+            while d != '\x00':
                 str.append(d)
-                d = exr.read(1)
+                d = exr.read(1).decode()
             cn = ''.join(str)
 
             while len(cn):
                 str = []
-                d = exr.read(1)
-                while d != '\0':
+                d = exr.read(1).decode()
+                while d != '\x00':
                     str.append(d)
-                    d = (exr.read(1))
+                    d = (exr.read(1)).decode()
                 name = ''.join(str)
                 size = unpack('I', exr.read(4))[0]
                 data = exr.read(size)
@@ -1248,12 +1273,13 @@ class shotgunScanner(object):
                     else:
                         result = COMPRESSION[ unpack('B', data)[0] ]
                 elif name == 'chlist':
+                    str_data = data.decode()
                     chld = {}
                     cid = 0
                     while cid < (size-1):
                         str = []
-                        while data[cid] != '\0':
-                            str.append((data)[cid])
+                        while str_data[cid] != '\x00':
+                            str.append((str_data)[cid])
                             cid = cid + 1
                         idx = ''.join(str)
                         cid = cid + 1
@@ -1272,10 +1298,10 @@ class shotgunScanner(object):
                 header[ cn ] = { name:result }
 
                 str = []
-                d = (exr.read(1))
-                while d != '\0':
+                d = exr.read(1).decode()
+                while d != '\x00':
                     str.append(d)
-                    d = (exr.read(1))
+                    d = (exr.read(1)).decode()
                 cn = ''.join(str)
 
             exr.close()
@@ -1427,8 +1453,11 @@ def ensure_superclips_in_bookmarks():
             superclips_bookmark.setAttribute('Path', SUPERCLIPS_FOLDER)
             section.appendChild(superclips_bookmark)
     with open(bookmark_file, 'w') as xml_file:
-        xml_file.write(bookmarks.toprettyxml(encoding='utf-8'))
-        xml_file.close()
+        try:
+            xml_file.write(bookmarks.toprettyxml(encoding='utf-8'))
+            xml_file.close()
+        except Exception as e:
+            pprint (e)
     return True
 
 def remove_superclips_from_bookmarks():
@@ -1464,22 +1493,34 @@ def remove_superclips_from_bookmarks():
                 if name == 'flameSuperclips' and path == SUPERCLIPS_FOLDER:
                     section.removeChild(shared_bookmark)
     with open(bookmark_file, 'w') as xml_file:
-        xml_file.write(bookmarks.toprettyxml(encoding='utf-8'))
-        xml_file.close()
+        try:
+            xml_file.write(bookmarks.toprettyxml(encoding='utf-8'))
+            xml_file.close()
+        except Exception as e:
+            pprint (e)
     return True
 
 #   ================
 #   STARTUP SEQUENCE
 #   ================
 
-config_folder = os.path.expanduser('~') + os.path.sep + '.superclips'
+config_folder = os.path.join(
+    os.path.expanduser('~'),
+    '.config',
+    '.superclips')
+if not os.path.isdir(config_folder):
+    try:
+        os.makedirs(config_folder)
+    except Exception as e:
+        print ('unable to create config folder %s' % config_folder)
+        pprint (e)
+
 status_file_name = os.path.splitext(os.path.basename(__file__))[0]
 status_file_name += '.' + socket.gethostname() + '.disabled'
 status_file_path = os.path.join(config_folder, status_file_name)
 
 if not os.path.isfile(status_file_path):
-    if not ensure_superclips_folder(SUPERCLIPS_FOLDER):
-        sys.exit()
+    ensure_superclips_folder(SUPERCLIPS_FOLDER)
     ensure_superclips_in_bookmarks()
     scanner = shotgunScanner()
 
