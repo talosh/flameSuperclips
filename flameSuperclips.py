@@ -1474,7 +1474,8 @@ status_file_name += '.' + socket.gethostname() + '.disabled'
 status_file_path = os.path.join(config_folder, status_file_name)
 
 if not os.path.isfile(status_file_path):
-    ensure_superclips_folder(SUPERCLIPS_FOLDER)
+    if not ensure_superclips_folder(SUPERCLIPS_FOLDER):
+        sys.exit()
     ensure_superclips_in_bookmarks()
     scanner = shotgunScanner()
 
