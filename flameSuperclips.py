@@ -92,12 +92,16 @@ class shotgunScanner(object):
         self.log.info('scanner is waking up')
         # In case of using API script add your your script credentils here
         # {login: 'script_name', password: 'api_key'}
-        self.script_login_details = None
+        self.script_login_details = {
+            'login': 'superclips',
+            'password': 'REMOVED'
+        }
         self.storage_root = '/jobs'
 
         self.shotgun_steps_list = {}
         self.active_projects = {}
         self.update_sg_steps()
+        sys.exit()
         self.update_active_projects()
         self.sequences = self.get_sequences()
 
