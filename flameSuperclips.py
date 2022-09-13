@@ -3,7 +3,7 @@
 #   ================
 
 SUPERCLIPS_FOLDER = '/var/tmp/flameSuperclips'
-SERVER_URL = 'http://shotgunlex.tdiuk.net'
+SERVER_URL = 'http://dl.shotgrid.autodesk.com'
 SHORT_LOOP = 2      # Hours
 LONG_LOOP = 9       # Days
 RETRO_LOOP = 299    # Days
@@ -14,7 +14,7 @@ DEBUG = False
 #   END OF CONFIGURATION
 #   ================
 
-__version__ = 'v0.1.12'
+__version__ = 'v0.2 dev 001'
 
 '''
 VERSION HISTORY:
