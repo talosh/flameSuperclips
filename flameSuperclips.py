@@ -3,7 +3,8 @@
 #   ================
 
 SUPERCLIPS_FOLDER = '/var/tmp/flameSuperclips'
-SERVER_URL = 'https://dl.shotgrid.autodesk.com'
+# SERVER_URL = 'https://dl.shotgrid.autodesk.com'
+SERVER_URL = 'https://farmfx.shotgunstudio.com'
 SHORT_LOOP = 2      # Hours
 LONG_LOOP = 9       # Days
 RETRO_LOOP = 299    # Days
@@ -98,6 +99,7 @@ class shotgunScanner(object):
         self.login_details = {
             'login': 'superclips',
             'password': 'REMOVED'
+            # 'password': 'REMOVED'
         }
         self.storage_root = STORAGE_ROOT_PATH
 
